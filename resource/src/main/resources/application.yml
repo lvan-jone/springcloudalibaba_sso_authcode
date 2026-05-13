@@ -9,6 +9,12 @@ spring:
       discovery:
         server-addr: localhost:8848
         namespace: public
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # 从 auth 模块获取公钥来验证 JWT
+          jwk-set-uri: http://localhost:9001/oauth2/jwks
 
 # JWT 签名密钥（必须与认证服务器一致）
 jwt:

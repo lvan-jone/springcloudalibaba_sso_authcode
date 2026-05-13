@@ -7,6 +7,7 @@ import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -57,6 +58,7 @@ import java.util.UUID;
 /**
  * 认证服务器配置（新版 Spring Authorization Server）
  */
+@Slf4j
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -72,6 +74,7 @@ public class AuthServerConfig {
      */
     @Bean
     public PasswordEncoder passwordEncoder() {
+        log.info("【2.Bean初始化】passwordEncoder - 密码编码器创建（支持bcrypt和noop）");
         // 创建支持多种编码方式的密码编码器
         String defaultEncoding = "bcrypt";
         Map<String, PasswordEncoder> encoders = new HashMap<>();
@@ -79,44 +82,25 @@ public class AuthServerConfig {
         encoders.put("noop", NoOpPasswordEncoder.getInstance());
         DelegatingPasswordEncoder delegatingPasswordEncoder = new DelegatingPasswordEncoder(defaultEncoding, encoders);
         delegatingPasswordEncoder.setDefaultPasswordEncoderForMatches(new BCryptPasswordEncoder());
+        log.info("密码编码器配置完成 - 默认使用BCrypt算法");
         return delegatingPasswordEncoder;
     }
 
-    /**
-     * 用户详情服务
-     * 定义测试用户：admin/123456, user/123456
-     * 密码使用 BCrypt 加密
-     */
-//    @Bean
-//    public UserDetailsService userDetailsService() {
-//        InMemoryUserDetailsManager manager = new InMemoryUserDetailsManager();
-//
-//        // 密码: 123456 的 BCrypt 加密结果
-//        UserDetails admin = User.withUsername("admin")
-//                .password("$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi")
-//                .roles("ADMIN", "USER")
-//                .build();
-//
-//        UserDetails user = User.withUsername("user")
-//                .password("$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi")
-//                .roles("USER")
-//                .build();
-//
-//        manager.createUser(admin);
-//        manager.createUser(user);
-//        return manager;
-//    }
+
     @Bean
     public UserDetailsService userDetailsService() {
+        log.info("【3.Bean初始化】userDetailsService - 用户详情服务创建（使用CustomUserDetailsService）");
         return customUserDetailsService;
     }
     // ==================== 2. OAuth2 客户端配置（替代 AuthorizationServerConfig） ====================
 
     /**
      * 创建 JdbcTemplate 用于数据库操作
+     * ==================== 1. 数据基础设施 ====================
      */
     @Bean
     public JdbcOperations jdbcOperations() {
+        log.info("【1.Bean初始化】jdbcOperations - JDBC操作模板创建");
         return new JdbcTemplate(dataSource);
     }
 
@@ -125,8 +109,8 @@ public class AuthServerConfig {
      */
     @Bean
     public RegisteredClientRepository registeredClientRepository(JdbcOperations jdbcOperations) {
+        log.info("【Bean初始化】registeredClientRepository - 客户端仓库创建");
         JdbcRegisteredClientRepository repository = new JdbcRegisteredClientRepository(jdbcOperations);
-
         // 检查是否已存在客户端，如果不存在则初始化默认客户端
         if (repository.findByClientId("gateway-client") == null) {
             // 创建默认客户端（实际生产环境应该通过 SQL 初始化）
@@ -134,34 +118,6 @@ public class AuthServerConfig {
         }
         return repository;
     }
-//    @Bean
-//    public RegisteredClientRepository registeredClientRepository() {
-//        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-//        RegisteredClient gatewayClient = RegisteredClient.withId(UUID.randomUUID().toString())
-//                .clientId("gateway-client")
-//                .clientSecret(encoder.encode("gateway-secret"))
-//                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-//                // 添加密码授权类型
-//                .authorizationGrantType(AuthorizationGrantType.PASSWORD)  // 新增
-//                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-//                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-//                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-//                .redirectUri("https://oauth.pstmn.io/v1/callback")
-//                // 添加 admin scope
-//                .scope("openid")
-//                .scope("profile")
-//                .scope("admin")  // 新增 admin scope
-//                .clientSettings(ClientSettings.builder()
-//                        .requireAuthorizationConsent(false)
-//                        .build())
-//                .tokenSettings(TokenSettings.builder()
-//                        .accessTokenTimeToLive(Duration.ofHours(1))
-//                        .refreshTokenTimeToLive(Duration.ofDays(7))
-//                        .build())
-//                .build();
-//
-//        return new InMemoryRegisteredClientRepository(gatewayClient);
-//    }
 
     // ==================== 3. JWT 配置（替代 JwtAccessTokenConverter） ====================
 
@@ -171,6 +127,9 @@ public class AuthServerConfig {
     @Bean
     public OAuth2AuthorizationService authorizationService(JdbcOperations jdbcOperations,
                                                            RegisteredClientRepository registeredClientRepository) {
+        log.info("【Bean初始化】authorizationService - OAuth2授权记录服务创建（存储到MySQL）");
+        log.info("  作用：存储授权码、Access Token、Refresh Token到数据库");
+        log.info("  表名：oauth2_authorization");
         return new JdbcOAuth2AuthorizationService(jdbcOperations, registeredClientRepository);
     }
 
@@ -180,6 +139,9 @@ public class AuthServerConfig {
     @Bean
     public OAuth2AuthorizationConsentService authorizationConsentService(JdbcOperations jdbcOperations,
                                                                          RegisteredClientRepository registeredClientRepository) {
+        log.info("【Bean初始化】authorizationConsentService - OAuth2授权确认服务创建（存储到MySQL）");
+        log.info("  作用：记录用户同意授权的权限范围");
+        log.info("  表名：oauth2_authorization_consent");
         return new JdbcOAuth2AuthorizationConsentService(jdbcOperations, registeredClientRepository);
     }
 
@@ -189,6 +151,7 @@ public class AuthServerConfig {
      */
     @Bean
     public JWKSource<SecurityContext> jwkSource() {
+        log.info("【Bean初始化】jwkSource - JWT密钥源创建");
         KeyPair keyPair = generateRsaKey();
         RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
         RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
@@ -197,7 +160,7 @@ public class AuthServerConfig {
                 .privateKey(privateKey)
                 .keyID(UUID.randomUUID().toString())
                 .build();
-
+        log.info("【JWK配置】密钥: {}", rsaKey);
         JWKSet jwkSet = new JWKSet(rsaKey);
         return new ImmutableJWKSet<>(jwkSet);
     }
@@ -208,6 +171,7 @@ public class AuthServerConfig {
      */
     private static KeyPair generateRsaKey() {
         try {
+            log.info("【RSA密钥生成】开始生成2048位RSA密钥对");
             KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
             generator.initialize(2048);
             return generator.generateKeyPair();
@@ -239,11 +203,16 @@ public class AuthServerConfig {
     @Bean
     @Order(1)
     public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
+        log.info("【Bean初始化】authorizationServerSecurityFilterChain - OAuth2授权服务器安全配置（@Order(1)，最高优先级）");
+        log.info("  保护的端点：/oauth2/authorize, /oauth2/token, /oauth2/jwks, /userinfo");
+        log.info("  请求匹配：所有OAuth2相关的端点");
         // 应用默认的 OAuth2 授权服务器配置
         OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(http);
         // 启用 OIDC 协议
         http.getConfigurer(OAuth2AuthorizationServerConfigurer.class)
                 .oidc(Customizer.withDefaults());
+        log.info("  ✅ OIDC协议已启用");
+        log.info("  ✅ 表单登录已启用");
         // 启用表单登录（替代旧版的 allowFormAuthenticationForClients）
         return http.formLogin(Customizer.withDefaults()).build();
     }
@@ -256,8 +225,10 @@ public class AuthServerConfig {
     @Bean
     @Order(2)
     public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
+        log.info("【Bean初始化】defaultSecurityFilterChain - 默认安全配置（@Order(2)，次优先级）");
+        log.info("  保护的端点：/login, /logout, 所有其他端点（除了/.well-known/**）");
+        log.info("  作用：提供登录页面、处理登录请求、会话管理");
         RequestCache requestCache = new HttpSessionRequestCache();
-
         http
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/.well-known/**", "/favicon.ico", "/error").permitAll()
@@ -294,6 +265,12 @@ public class AuthServerConfig {
      */
     @Bean
     public AuthorizationServerSettings authorizationServerSettings() {
+        log.info("【Bean初始化】authorizationServerSettings - 授权服务器端点配置");
+        log.info("  Issuer URI: http://localhost:9001");
+        log.info("  授权端点: /oauth2/authorize");
+        log.info("  Token端点: /oauth2/token");
+        log.info("  JWK端点: /oauth2/jwks");
+        log.info("  用户信息端点: /userinfo");
         return AuthorizationServerSettings.builder()
                 .issuer("http://localhost:9001")                    // 服务签发者
                 .authorizationEndpoint("/oauth2/authorize")         // 授权端点（对应旧版的 /oauth/authorize）
@@ -302,4 +279,5 @@ public class AuthServerConfig {
                 .oidcUserInfoEndpoint("/userinfo")                  // 用户信息端点
                 .build();
     }
+
 }

@@ -1,0 +1,51 @@
+# ==================== IDE ====================
+.idea/
+*.iml
+*.iws
+*.ipr
+.DS_Store
+.vscode/
+.settings/
+.classpath
+.project
+
+# ==================== 构建产物 ====================
+target/
+out/
+build/
+logs/
+*.log
+*.class
+
+# ==================== Maven ====================
+.mvn/wrapper/maven-wrapper.jar
+.dependency-reduce-pom.xml
+
+# ==================== Spring Boot ====================
+application-local.yml
+application-dev.yml
+application-*.local.yml
+bootstrap-local.yml
+*.pid
+
+# ==================== 临时文件 ====================
+*.tmp
+*.swp
+*~
+.~*
+.nfs*
+
+# ==================== 其他 ====================
+*.lock
+*.bak
+*.orig
+*.rej
+.svn/
+*/
+
+# ==================== 敏感信息 ====================
+*.p12
+*.jks
+*.key
+*.pem
+*.crt

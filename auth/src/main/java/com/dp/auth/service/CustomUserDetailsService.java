@@ -17,7 +17,6 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {
-
     private final SysUserMapper sysUserMapper;
 
     @Override
@@ -26,23 +25,18 @@ public class CustomUserDetailsService implements UserDetailsService {
         LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SysUser::getUsername, username);
         SysUser sysUser = sysUserMapper.selectOne(wrapper);
-
         if (sysUser == null) {
             throw new UsernameNotFoundException("用户不存在: " + username);
         }
-
         if (sysUser.getStatus() == 0) {
             throw new UsernameNotFoundException("用户已被禁用: " + username);
         }
-
         // 查询用户角色
         List<String> roleCodes = sysUserMapper.selectRoleCodesByUserId(sysUser.getId());
-
         // 转换为 Spring Security 的权限格式（添加 ROLE_ 前缀）
         List<SimpleGrantedAuthority> authorities = roleCodes.stream()
                 .map(roleCode -> new SimpleGrantedAuthority("ROLE_" + roleCode))
                 .collect(Collectors.toList());
-
         return User.builder()
                 .username(sysUser.getUsername())
                 .password(sysUser.getPassword())

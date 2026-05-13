@@ -9,6 +9,7 @@
         <outputRelativeToContentRoot value="true" />
         <module name="auth" />
         <module name="resource" />
+        <module name="gateways" />
       </profile>
     </annotationProcessing>
   </component>
@@ -16,6 +17,7 @@
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="alibaba_jwt_sso" options="" />
       <module name="auth" options="-parameters" />
+      <module name="gateways" options="-parameters" />
       <module name="resource" options="-parameters" />
     </option>
   </component>
